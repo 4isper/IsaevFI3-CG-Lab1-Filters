@@ -238,5 +238,12 @@ namespace WindowsFormsApp1
             Filters filters = new LinearCorrection();
             backgroundWorker1.RunWorkerAsync(filters);
         }
+
+        private void медианныйФильтрToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Filters filters = new MedianFilter();
+            backgroundWorker1.RunWorkerAsync(filters);
+
+        }
     }
 }
