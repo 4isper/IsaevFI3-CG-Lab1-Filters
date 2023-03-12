@@ -14,7 +14,7 @@ namespace WindowsFormsApp1
     abstract class Filters
     {
         protected abstract Color calculateNewPixelColor(Bitmap sourceImage, int x, int y);
-        public Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
+        public virtual Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
         {
             Bitmap resultImage = new Bitmap(sourceImage.Width, sourceImage.Height);
             for (int i = 0; i < sourceImage.Width; i++)
@@ -382,48 +382,23 @@ namespace WindowsFormsApp1
 
     class GreyworldFilter : Filters
     {
+        protected int avgColorR;
+        protected int avgColorG;
+        protected int avgColorB;
+        protected int avg;
 
-
-        //public Color AvgColor(Bitmap sourceImage)
-        //{
-        //    int sumR = 0;
-        //    int sumG = 0;
-        //    int sumB = 0;
-        //    int N = sourceImage.Width*sourceImage.Height;
-        //    for (int x = 0; x < sourceImage.Width; x++)
-        //    {
-        //        for(int y = 0; y < sourceImage.Height; y++)
-        //        {
-        //            Color sourceColor = sourceImage.GetPixel(x, y);
-
-        //            sumR += sourceColor.R;
-        //            sumG += sourceColor.G;
-        //            sumB += sourceColor.B;
-        //        }
-        //    }
-        //    return Color.FromArgb(sumR/N, sumG/N, sumB/N);
-        //}
-
-        //public int Avg(Bitmap sourceImage)
-        //{
-        //    Color color = AvgColor(sourceImage);
-        //    int avg = (color.R + color.G + color.B)/3;
-        //    return avg;
-        //}
-
-        protected override Color calculateNewPixelColor(Bitmap sourceImage, int x, int y)
+        public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
         {
-            
-            Color sourceColor = sourceImage.GetPixel(x, y);
-            //int avg = Avg(sourceImage);
-            //Color avgColor = AvgColor(sourceImage);
-
+            Bitmap resultImage = new Bitmap(sourceImage.Width, sourceImage.Height);
+            int N = sourceImage.Width * sourceImage.Height;
             int sumR = 0;
             int sumG = 0;
             int sumB = 0;
-            int N = sourceImage.Width * sourceImage.Height;
+
             for (int i = 0; i < sourceImage.Width; i++)
             {
+                worker.ReportProgress((int)((float)i / resultImage.Width * 100));
+                if (worker.CancellationPending) return null;
                 for (int j = 0; j < sourceImage.Height; j++)
                 {
                     Color sColor = sourceImage.GetPixel(i, j);
@@ -434,11 +409,32 @@ namespace WindowsFormsApp1
                 }
             }
 
-            int avgColorR = sumR / N;
-            int avgColorG = sumG / N;
-            int avgColorB = sumB / N;
+            avgColorR = sumR / N;
+            avgColorG = sumG / N;
+            avgColorB = sumB / N;
 
-            int avg = (avgColorR + avgColorG + avgColorB) / 3;
+            avg = (avgColorR + avgColorG + avgColorB) / 3;
+
+
+            for (int i = 0; i < sourceImage.Width; i++)
+            {
+                worker.ReportProgress((int)((float)i / resultImage.Width * 100));
+                if (worker.CancellationPending) return null;
+                for (int j = 0; j < sourceImage.Height; j++)
+                {
+                    resultImage.SetPixel(i, j, calculateNewPixelColor(sourceImage, i, j));
+  
+                }
+            }
+
+            return resultImage;
+        }
+        
+
+        protected override Color calculateNewPixelColor(Bitmap sourceImage, int x, int y)
+        {
+            
+            Color sourceColor = sourceImage.GetPixel(x, y);
 
             int R = sourceColor.R * avg / avgColorR;
             int G = sourceColor.G * avg / avgColorG;
@@ -449,4 +445,5 @@ namespace WindowsFormsApp1
                                     Clamp(B, 0, 255));
         }
     }
+
 }
