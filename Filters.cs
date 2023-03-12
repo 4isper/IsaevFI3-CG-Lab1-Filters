@@ -8,6 +8,7 @@ using System.ComponentModel;
 using System.Data.SqlTypes;
 using System.Security.Policy;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Rebar;
+using System.Net.NetworkInformation;
 
 namespace WindowsFormsApp1
 {
@@ -382,10 +383,7 @@ namespace WindowsFormsApp1
 
     class GreyworldFilter : Filters
     {
-        protected int avgColorR;
-        protected int avgColorG;
-        protected int avgColorB;
-        protected int avg;
+        protected int avgColorR, avgColorG, avgColorB, avg;
 
         public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
         {
@@ -397,7 +395,7 @@ namespace WindowsFormsApp1
 
             for (int i = 0; i < sourceImage.Width; i++)
             {
-                worker.ReportProgress((int)((float)i / resultImage.Width * 100));
+                worker.ReportProgress((int)((float)i / resultImage.Width * 50));
                 if (worker.CancellationPending) return null;
                 for (int j = 0; j < sourceImage.Height; j++)
                 {
@@ -418,7 +416,7 @@ namespace WindowsFormsApp1
 
             for (int i = 0; i < sourceImage.Width; i++)
             {
-                worker.ReportProgress((int)((float)i / resultImage.Width * 100));
+                worker.ReportProgress(50 + (int)((float)i / resultImage.Width * 50));
                 if (worker.CancellationPending) return null;
                 for (int j = 0; j < sourceImage.Height; j++)
                 {
@@ -430,7 +428,6 @@ namespace WindowsFormsApp1
             return resultImage;
         }
         
-
         protected override Color calculateNewPixelColor(Bitmap sourceImage, int x, int y)
         {
             
@@ -446,4 +443,63 @@ namespace WindowsFormsApp1
         }
     }
 
+    class LinearCorrection : Filters
+    {
+        protected int YmaxR, YmaxG, YmaxB,
+                       YminR, YminG, YminB;
+        public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
+        {
+            Bitmap resultImage = new Bitmap(sourceImage.Width, sourceImage.Height);
+            Color zeroColor = sourceImage.GetPixel(0, 0);
+
+            YminR = zeroColor.R;
+            YmaxR = zeroColor.R;
+            YmaxG = zeroColor.G;
+            YminG = zeroColor.G;
+            YmaxB = zeroColor.B;
+            YminB = zeroColor.B;
+
+            for (int i = 0; i < sourceImage.Width; i++)
+            {
+                worker.ReportProgress((int)((float)i / resultImage.Width * 50));
+                if (worker.CancellationPending) return null;
+                for (int j = 0; j < sourceImage.Height; j++)
+                {
+                    Color sColor = sourceImage.GetPixel(i, j);
+
+                    if (YminR > sColor.R) YminR = sColor.R;
+                    if (YmaxR < sColor.R) YmaxR = sColor.R;
+                    if (YminG > sColor.G) YminG = sColor.G;
+                    if (YmaxG < sColor.G) YmaxG = sColor.G;
+                    if (YminB > sColor.B) YminB = sColor.B;
+                    if (YmaxB < sColor.B) YmaxB = sColor.B;
+                }
+            }
+
+            for (int i = 0; i < sourceImage.Width; i++)
+            {
+                worker.ReportProgress(50 + (int)((float)i / resultImage.Width * 50));
+                if (worker.CancellationPending) return null;
+                for (int j = 0; j < sourceImage.Height; j++)
+                {
+                    resultImage.SetPixel(i, j, calculateNewPixelColor(sourceImage, i, j));
+                }
+            }
+            return resultImage;
+        }
+
+        protected override Color calculateNewPixelColor(Bitmap sourceImage, int x, int y)
+        {
+
+            Color sourceColor = sourceImage.GetPixel(x, y);
+
+            int R = (sourceColor.R - YminR) * (255 / (YmaxR - YminR));
+            int G = (sourceColor.G - YminG) * (255 / (YmaxG - YminG));
+            int B = (sourceColor.B - YminB) * (255 / (YmaxB - YminB));
+
+            return Color.FromArgb(Clamp(R, 0, 255),
+                                    Clamp(G, 0, 255),
+                                    Clamp(B, 0, 255));
+        }
+    }
 }

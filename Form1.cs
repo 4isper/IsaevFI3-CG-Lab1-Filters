@@ -232,5 +232,11 @@ namespace WindowsFormsApp1
             Filters filters = new GreyworldFilter();
             backgroundWorker1.RunWorkerAsync(filters);
         }
+
+        private void линейноеРастяжениеToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Filters filters = new LinearCorrection();
+            backgroundWorker1.RunWorkerAsync(filters);
+        }
     }
 }
