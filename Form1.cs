@@ -46,7 +46,7 @@ namespace WindowsFormsApp1
         {
             Bitmap newImage = ((Filters)e.Argument).processImage(image, backgroundWorker1);
             if (backgroundWorker1.CancellationPending != true)
-                image= newImage;
+                image = newImage;
         }
 
         private void backgroundWorker1_ProgressChanged(object sender, ProgressChangedEventArgs e)
@@ -215,12 +215,6 @@ namespace WindowsFormsApp1
             backgroundWorker1.RunWorkerAsync(filters);
         }
 
-        private void dilationToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Filters filters = new Dilation();
-            backgroundWorker1.RunWorkerAsync(filters);
-        }
-
         private void переносToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Filters filters = new Transfer();
@@ -241,9 +235,39 @@ namespace WindowsFormsApp1
 
         private void медианныйФильтрToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Filters filters = new MedianFilter();
+            Filters filters = new MedianFilter(5);
             backgroundWorker1.RunWorkerAsync(filters);
 
+        }
+
+        private void сужениеToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Filters filters = new Erosion();
+            backgroundWorker1.RunWorkerAsync(filters);
+        }
+
+        private void расширениеToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Filters filters = new Dilation();
+            backgroundWorker1.RunWorkerAsync(filters);
+        }
+
+        private void открытиеToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Filters filters = new Opening();
+            backgroundWorker1.RunWorkerAsync(filters);
+        }
+
+        private void закрытиеToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Filters filters = new Closing();
+            backgroundWorker1.RunWorkerAsync(filters);
+        }
+
+        private void gradToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Filters filters = new Grad();
+            backgroundWorker1.RunWorkerAsync(filters);
         }
     }
 }

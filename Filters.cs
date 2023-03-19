@@ -9,12 +9,15 @@ using System.Data.SqlTypes;
 using System.Security.Policy;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Rebar;
 using System.Net.NetworkInformation;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace WindowsFormsApp1
 {
     abstract class Filters
     {
-        protected abstract Color calculateNewPixelColor(Bitmap sourceImage, int x, int y);
+        protected virtual Color calculateNewPixelColor(Bitmap sourceImage, int x, int y) {
+            return sourceImage.GetPixel(x, y);
+        }
         public virtual Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
         {
             Bitmap resultImage = new Bitmap(sourceImage.Width, sourceImage.Height);
@@ -368,16 +371,160 @@ namespace WindowsFormsApp1
         }
     }
 
-    class Dilation : MatrixFilter
+    class Morfology : Filters
     {
-        public Dilation() {
+        protected int MW, MH;
+        protected int[,] mask = null;
+        protected int del = 1, plus = 0;
 
-            int size = 3;
-            kernel = new float[size, size];
-            kernel[0, 0] = 0; kernel[0, 1] = 1; kernel[0, 2] = 0;
-            kernel[1, 0] = 1; kernel[1, 1] = 1; kernel[1, 2] = 1;
-            kernel[2, 0] = 0; kernel[2, 1] = 1; kernel[2, 2] = 0;
+        protected void SetMask(int MW, int MH, int[,] mask)
+        {
+            this.MW = MW;
+            this.MH = MH;
+            this.mask = mask;
+        }
 
+        public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
+        {
+            Bitmap resultImage = new Bitmap(sourceImage.Width, sourceImage.Height);
+            SetMask(3, 3, new int[,] { { 0, 1, 0 }, { 1, 1, 1 }, { 0, 1, 0 } });
+
+            for (int i = MW / 2; i < sourceImage.Width - MW / 2; i++)
+            {
+                worker.ReportProgress(plus + (int)((float)i / resultImage.Width * 100/del));
+                if (worker.CancellationPending) return null;
+                for (int j = MH; j < sourceImage.Height - MH / 2; j++)
+                {
+                    resultImage.SetPixel(i, j, calculateNewPixelColor(sourceImage, i, j));
+                }
+            }
+            return resultImage;
+
+        }
+    }
+    class Dilation : Morfology
+    {
+        public Dilation(int del = 1, int plus = 0)
+        {
+            this.del = del;
+            this.plus = plus;
+        }
+        protected override Color calculateNewPixelColor(Bitmap sourceImage, int x, int y)
+        {
+            double avg;
+            double avgRes = 0;
+            Color sourceColor;
+            Color resultColor = Color.FromArgb(0, 0, 0);
+
+            for (int i = -MW / 2; i <= MW / 2; i++)
+            {
+                for (int j = -MH / 2; j <= MH / 2; j++)
+                {
+                    sourceColor = sourceImage.GetPixel(i + x, j + y);
+                    avg = (sourceColor.R + sourceColor.B + sourceColor.G) / 3;
+
+                    if (mask[i + MW / 2, j + MH / 2] * avg > avgRes)
+                        resultColor = sourceColor;
+
+                    avgRes = (resultColor.R + resultColor.G + resultColor.B) / 3;
+                }
+            }
+
+            return resultColor;
+        }
+    }
+
+    class Erosion : Morfology
+    {
+        public Erosion(int del = 1, int plus = 0)
+        {
+            this.del = del;
+            this.plus = plus;
+        }
+        protected override Color calculateNewPixelColor(Bitmap sourceImage, int x, int y)
+        {
+            double avg;
+            Color sourceColor;
+            Color resultColor = Color.FromArgb(0, 0, 0);
+            double avgRes = 255;
+
+            for (int i = -MW / 2; i <= MW / 2; i++)
+            {
+                for (int j = -MH / 2; j <= MH / 2; j++)
+                {
+                    sourceColor = sourceImage.GetPixel(i + x, j + y);
+                    avg = (sourceColor.R + sourceColor.B + sourceColor.G) / 3;
+
+                    if (mask[i + MW / 2, j + MH / 2] * avg < avgRes)
+                        resultColor = sourceColor;
+
+                    avgRes = (resultColor.R + resultColor.G + resultColor.B) / 3;
+                }
+            }
+
+            return resultColor;
+        }
+    }
+
+    class Opening : Morfology
+    {
+        public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
+        {
+            Filters filters1 = new Dilation(2,50);
+            Filters filters2 = new Erosion(2);
+
+            return filters1.processImage(filters2.processImage(sourceImage, worker), worker);
+        }
+    }
+
+    class Closing : Morfology
+    {
+        public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
+        {
+            Filters filters1 = new Dilation(2);
+            Filters filters2 = new Erosion(2,50);
+
+            return filters2.processImage(filters1.processImage(sourceImage, worker), worker);
+        }
+    }
+
+    class Grad : Morfology
+    {
+        protected Bitmap dilImage, erImage;
+        public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
+        {
+            Filters filterD = new Dilation(3);
+            Filters filterE = new Erosion(3,33);
+            dilImage = filterD.processImage(sourceImage, worker);
+            erImage = filterE.processImage(sourceImage, worker);
+
+            Bitmap resultImage = new Bitmap(sourceImage.Width, sourceImage.Height);
+
+            for (int i = 0; i < sourceImage.Width; i++)
+            {
+                worker.ReportProgress(67 + (int)((float)i / resultImage.Width * 33));
+                if (worker.CancellationPending) return null;
+                for (int j = 0; j < sourceImage.Height; j++)
+                {
+                    resultImage.SetPixel(i, j, calculateNewPixelColor(i, j));
+                }
+            }
+            return resultImage;
+        }
+
+        protected Color calculateNewPixelColor( int x, int y)
+        {
+
+            Color dilColor = dilImage.GetPixel(x, y);
+            Color erColor = erImage.GetPixel(x, y);
+
+            int R = dilColor.R - erColor.R;
+            int G = dilColor.G - erColor.G;
+            int B = dilColor.B - erColor.B;
+
+            return Color.FromArgb(Clamp(R, 0, 255),
+                                    Clamp(G, 0, 255),
+                                    Clamp(B, 0, 255));
         }
     }
 
@@ -421,7 +568,6 @@ namespace WindowsFormsApp1
                 for (int j = 0; j < sourceImage.Height; j++)
                 {
                     resultImage.SetPixel(i, j, calculateNewPixelColor(sourceImage, i, j));
-  
                 }
             }
 
@@ -505,18 +651,29 @@ namespace WindowsFormsApp1
 
     class MedianFilter : Filters
     {
+        private int neighborhoodSize; // размер окрестности 
+
+        public MedianFilter(int neighborhoodSize)
+        {
+            this.neighborhoodSize = neighborhoodSize;
+        }
+
         public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
         {
-            Bitmap resultImage = new Bitmap(sourceImage.Width, sourceImage.Height);
-            for (int i = 0; i < sourceImage.Width; i++)
+            int height = sourceImage.Height;
+            int width = sourceImage.Width;
+            Bitmap resultImage = new Bitmap(width, height);
+            int offset = (int)(neighborhoodSize / 2);
+
+            for (int i = 0; i < width; i++)
             {
-                worker.ReportProgress((int)((float)i / resultImage.Width * 100));
+                worker.ReportProgress((int)((float)i / width * 100));
                 if (worker.CancellationPending) return null;
-                for (int j = 0; j < sourceImage.Height; j++)
+
+                for (int j = 0; j < height; j++)
                 {
-                    if (i == 0 || j== 0 || j == sourceImage.Height-1 || i == sourceImage.Width-1) resultImage.SetPixel(i, j, sourceImage.GetPixel(i, j));
+                    if (i < offset || j < offset || j >= height - offset || i >= width - offset) resultImage.SetPixel(i, j, sourceImage.GetPixel(i, j));
                     else resultImage.SetPixel(i, j, calculateNewPixelColor(sourceImage, i, j));
-               
                 }
             }
             return resultImage;
@@ -524,31 +681,31 @@ namespace WindowsFormsApp1
 
         protected override Color calculateNewPixelColor(Bitmap sourceImage, int x, int y)
         {
-            int diam = 9;
-            Color[] window = new Color[diam];
-            int[] windowR = new int[diam];
-            int[] windowG = new int[diam];
-            int[] windowB = new int[diam];
+            int[] windowR = new int[neighborhoodSize * neighborhoodSize];
+            int[] windowG = new int[neighborhoodSize * neighborhoodSize];
+            int[] windowB = new int[neighborhoodSize * neighborhoodSize];
             int count = 0;
-            for (int k = x - 1; k < x + 2; k++)
+            int offset = (int)(neighborhoodSize / 2);
+            for (int k = x - offset; k <= x + offset; k++)
             {
-                for (int l = y - 1; l < y + 2; l++)
+                for (int l = y - offset; l <= y + offset; l++)
                 {
-                    window[count] = sourceImage.GetPixel(k, l);
-                    windowR[count] = window[count].R;
-                    windowG[count] = window[count].G;
-                    windowB[count] = window[count].B;
+                    Color color = sourceImage.GetPixel(k, l);
+                    windowR[count] = color.R;
+                    windowG[count] = color.G;
+                    windowB[count] = color.B;
                     count++;
                 }
             }
             Array.Sort(windowR);
             Array.Sort(windowG);
             Array.Sort(windowB);
-            int r = windowR[diam / 2];
-            int g = windowG[diam / 2];
-            int b = windowB[diam / 2];
+            int r = windowR[count / 2];
+            int g = windowG[count / 2];
+            int b = windowB[count / 2];
     
             return Color.FromArgb(r, g, b);
         }
     }
+
 }
