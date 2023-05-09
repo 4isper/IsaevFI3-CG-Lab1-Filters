@@ -15,6 +15,7 @@ namespace WindowsFormsApp1
 {
     abstract class Filters
     {
+        protected int del = 1, plus = 0;
         protected virtual Color calculateNewPixelColor(Bitmap sourceImage, int x, int y) {
             return sourceImage.GetPixel(x, y);
         }
@@ -23,7 +24,7 @@ namespace WindowsFormsApp1
             Bitmap resultImage = new Bitmap(sourceImage.Width, sourceImage.Height);
             for (int i = 0; i < sourceImage.Width; i++)
             {
-                worker.ReportProgress((int)((float)i / resultImage.Width * 100));
+                worker.ReportProgress(plus + (int)((float)i / resultImage.Width * 100/del));
                 if (worker.CancellationPending) return null;
                 for (int j = 0; j < sourceImage.Height; j++)
                 {
@@ -55,6 +56,7 @@ namespace WindowsFormsApp1
     class MatrixFilter : Filters
     {
         protected float[,] kernel = null;
+        
         protected MatrixFilter() { }
         public MatrixFilter(float[,] kernel) { this.kernel = kernel; }
 
@@ -166,8 +168,11 @@ namespace WindowsFormsApp1
 
     class SobelFilterY : MatrixFilter
     {
-        public SobelFilterY()
+        public SobelFilterY(int del = 1, int plus = 0)
         {
+            this.del = del;
+            this.plus = plus;
+
             int sizeX = 3;
             int sizeY = 3;
             kernel = new float[sizeX, sizeY];
@@ -179,14 +184,57 @@ namespace WindowsFormsApp1
 
     class SobelFilterX : MatrixFilter
     {
-        public SobelFilterX()
+        public SobelFilterX(int del = 1, int plus = 0)
         {
+            this.del = del;
+            this.plus = plus;
+
             int sizeX = 3;
             int sizeY = 3;
             kernel = new float[sizeX, sizeY];
             kernel[0, 0] = -1; kernel[0, 1] = 0; kernel[0, 2] = 1;
             kernel[1, 0] = -2; kernel[1, 1] = 0; kernel[1, 2] = 2;
             kernel[2, 0] = -1; kernel[2, 1] = 0; kernel[2, 2] = 1;
+        }
+    }
+
+    class SobelFilter : Filters
+    {
+        protected Bitmap XImage,YImage;
+        public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
+        {
+            Filters filterD = new SobelFilterX(3);
+            Filters filterE = new SobelFilterY(3, 33);
+            XImage = filterD.processImage(sourceImage, worker);
+            YImage = filterE.processImage(sourceImage, worker);
+
+            Bitmap resultImage = new Bitmap(sourceImage.Width, sourceImage.Height);
+
+            for (int i = 0; i < sourceImage.Width; i++)
+            {
+                worker.ReportProgress(67 + (int)((float)i / resultImage.Width * 33));
+                if (worker.CancellationPending) return null;
+                for (int j = 0; j < sourceImage.Height; j++)
+                {
+                    resultImage.SetPixel(i, j, calculateNewPixelColor(i, j));
+                }
+            }
+            return resultImage;
+        }
+
+        protected Color calculateNewPixelColor(int x, int y)
+        {
+
+            Color XColor = XImage.GetPixel(x, y);
+            Color YColor = YImage.GetPixel(x, y);
+
+            int R = (int)Math.Sqrt(XColor.R * XColor.R + YColor.R * YColor.R);
+            int G = Convert.ToInt32(Math.Sqrt(XColor.G * XColor.G + YColor.G * YColor.G));
+            int B = Convert.ToInt32(Math.Sqrt(XColor.B * XColor.B + YColor.B * YColor.B));
+
+            return Color.FromArgb(Clamp(R, 0, 255),
+                                    Clamp(G, 0, 255),
+                                    Clamp(B, 0, 255));
         }
     }
 
@@ -375,7 +423,6 @@ namespace WindowsFormsApp1
     {
         protected int MW, MH;
         protected int[,] mask = null;
-        protected int del = 1, plus = 0;
 
         protected void SetMask(int MW, int MH, int[,] mask)
         {
