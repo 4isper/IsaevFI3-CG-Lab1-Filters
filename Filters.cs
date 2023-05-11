@@ -434,7 +434,8 @@ namespace WindowsFormsApp1
         public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
         {
             Bitmap resultImage = new Bitmap(sourceImage.Width, sourceImage.Height);
-            SetMask(3, 3, new int[,] { { 0, 1, 0 }, { 1, 1, 1 }, { 0, 1, 0 } });
+            //SetMask(3, 3, new int[,] { { 0, 1, 0 }, { 1, 1, 1 }, { 0, 1, 0 } });
+            SetMask(3, 3, mask);
 
             for (int i = MW / 2; i < sourceImage.Width - MW / 2; i++)
             {
@@ -451,10 +452,11 @@ namespace WindowsFormsApp1
     }
     class Dilation : Morfology
     {
-        public Dilation(int del = 1, int plus = 0)
+        public Dilation(int[,] Mask, int del = 1, int plus = 0)
         {
             this.del = del;
             this.plus = plus;
+            mask = Mask;
         }
         protected override Color calculateNewPixelColor(Bitmap sourceImage, int x, int y)
         {
@@ -483,10 +485,11 @@ namespace WindowsFormsApp1
 
     class Erosion : Morfology
     {
-        public Erosion(int del = 1, int plus = 0)
+        public Erosion(int[,] Mask, int del = 1, int plus = 0)
         {
             this.del = del;
             this.plus = plus;
+            mask = Mask;
         }
         protected override Color calculateNewPixelColor(Bitmap sourceImage, int x, int y)
         {
@@ -517,8 +520,8 @@ namespace WindowsFormsApp1
     {
         public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
         {
-            Filters filters1 = new Dilation(2,50);
-            Filters filters2 = new Erosion(2);
+            Filters filters1 = new Dilation(mask,2,50);
+            Filters filters2 = new Erosion(mask, 2);
 
             return filters1.processImage(filters2.processImage(sourceImage, worker), worker);
         }
@@ -528,8 +531,8 @@ namespace WindowsFormsApp1
     {
         public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
         {
-            Filters filters1 = new Dilation(2);
-            Filters filters2 = new Erosion(2,50);
+            Filters filters1 = new Dilation(mask, 2);
+            Filters filters2 = new Erosion(mask, 2,50);
 
             return filters2.processImage(filters1.processImage(sourceImage, worker), worker);
         }
@@ -540,8 +543,8 @@ namespace WindowsFormsApp1
         protected Bitmap dilImage, erImage;
         public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
         {
-            Filters filterD = new Dilation(3);
-            Filters filterE = new Erosion(3,33);
+            Filters filterD = new Dilation(mask, 3);
+            Filters filterE = new Erosion(mask, 3,33);
             dilImage = filterD.processImage(sourceImage, worker);
             erImage = filterE.processImage(sourceImage, worker);
 

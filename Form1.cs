@@ -13,14 +13,13 @@ namespace WindowsFormsApp1
     public partial class Form1 : Form
     {
         Bitmap image;
+        Stack<Image> imageHistory = new Stack<Image>();
 
-        const int MaxN = 100;
-        int n = 3;
-        TextBox[,] MatrText = null;
-        int[,] Matr = new int[MaxN,MaxN];
-        bool f1;
-        int dx = 40, dy = 20;
-        Form2 form2 = null;
+
+        int[,] structElem = new int[3, 3]{
+                {1, 1, 1},
+                {1, 1, 1},
+                {1, 1, 1}};
 
         public Form1()
         {
@@ -34,6 +33,7 @@ namespace WindowsFormsApp1
             dialog.Filter = "Image files | *.png; *.jpg; *.bmp | All Files (*.*) | *.*";
             if (dialog.ShowDialog() == DialogResult.OK )
             {
+                imageHistory.Clear();
                 image = new Bitmap(dialog.FileName);
             }
             pictureBox1.Image = image;
@@ -67,6 +67,7 @@ namespace WindowsFormsApp1
         {
             if (!e.Cancelled)
             {
+                imageHistory.Push(pictureBox1.Image);
                 pictureBox1.Image= image;
                 pictureBox1.Refresh();
             }
@@ -257,13 +258,13 @@ namespace WindowsFormsApp1
 
         private void сужениеToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Filters filters = new Erosion();
+            Filters filters = new Erosion(structElem);
             backgroundWorker1.RunWorkerAsync(filters);
         }
 
         private void расширениеToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Filters filters = new Dilation();
+            Filters filters = new Dilation(structElem);
             backgroundWorker1.RunWorkerAsync(filters);
         }
 
@@ -288,33 +289,21 @@ namespace WindowsFormsApp1
 
         private void задатьМаскуToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            f1 = false;
+            Form2 form2 = new Form2();
+            form2.ShowDialog();
+            structElem = form2.mask;
+        }
 
-            form2 = new Form2();
-
-            MatrText = new TextBox[MaxN, MaxN];
-
-            for (int i = 0; i < MaxN; i++)
-                for (int j = 0; j < MaxN; j++)
-                {
-                    // 3.1. Выделить память
-                    MatrText[i, j] = new TextBox();
-
-                    // 3.2. Обнулить эту ячейку
-                    MatrText[i, j].Text = "0";
-
-                    // 3.3. Установить позицию ячейки в форме Form2
-                    MatrText[i, j].Location = new System.Drawing.Point(10 + i * dx, 10 + j * dy);
-
-                    // 3.4. Установить размер ячейки
-                    MatrText[i, j].Size = new System.Drawing.Size(dx, dy);
-
-                    // 3.5. Пока что спрятать ячейку
-                    MatrText[i, j].Visible = false;
-
-                    // 3.6. Добавить MatrText[i,j] в форму form2
-                    form2.Controls.Add(MatrText[i, j]);
-                }
+        private void отменаToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (imageHistory.Count == 0)
+                MessageBox.Show("Changing history is empty");
+            else
+            {
+                pictureBox1.Image = imageHistory.Pop();
+                image = (Bitmap)pictureBox1.Image;
+                pictureBox1.Refresh();
+            }
         }
     }
 }
