@@ -72,7 +72,7 @@ namespace WindowsFormsApp1
                 for (int k = -radiusX; k<= radiusX; k++)
                 {
                     int idX = Clamp(x + k, 0, sourceImage.Width - 1);
-                    int idY = Clamp(y + l, 0, sourceImage.Height- 1);
+                    int idY = Clamp(y + l, 0, sourceImage.Height - 1);
                     Color neighborColor = sourceImage.GetPixel(idX, idY);
                     resultR += neighborColor.R * kernel[k + radiusX, l + radiusY];
                     resultG += neighborColor.G * kernel[k + radiusX, l + radiusY];
@@ -80,8 +80,8 @@ namespace WindowsFormsApp1
                 }
 
              return Color.FromArgb(Clamp((int)resultR,0,255),
-                                    Clamp((int)resultG,0,255),
-                                    Clamp((int)resultB,0,255));
+                                    Clamp((int)resultG, 0,255),
+                                    Clamp((int)resultB, 0,255));
         }
     }
 
@@ -229,12 +229,55 @@ namespace WindowsFormsApp1
             Color YColor = YImage.GetPixel(x, y);
 
             int R = (int)Math.Sqrt(XColor.R * XColor.R + YColor.R * YColor.R);
-            int G = Convert.ToInt32(Math.Sqrt(XColor.G * XColor.G + YColor.G * YColor.G));
-            int B = Convert.ToInt32(Math.Sqrt(XColor.B * XColor.B + YColor.B * YColor.B));
+            int G = (int)Math.Sqrt(XColor.G * XColor.G + YColor.G * YColor.G);
+            int B = (int)Math.Sqrt(XColor.B * XColor.B + YColor.B * YColor.B);
 
             return Color.FromArgb(Clamp(R, 0, 255),
                                     Clamp(G, 0, 255),
                                     Clamp(B, 0, 255));
+        }
+    }
+
+    class SobelFilterNEW: MatrixFilter
+    {
+        protected float[,] kernelY = null;
+
+        public SobelFilterNEW()
+        {
+            const int size = 3;
+            kernel = new float[size, size] { { -1, 0, 1 }, { -2, 0, 2 }, { -1, 0, 1 } };
+            kernelY = new float[size, size] { { -1, -2, -1 }, { 0, 0, 0 }, { 1, 2, 1 } };
+        }
+
+        protected override Color calculateNewPixelColor(Bitmap sourceImage, int x, int y)
+        {
+            int radiusX = kernel.GetLength(0) / 2;
+            int radiusY = kernel.GetLength(1) / 2;
+
+            float[] channelR = new float[2];
+            float[] channelG = new float[2];
+            float[] channelB = new float[2];
+
+            for (int l = -radiusY; l <= radiusY; l++)
+                for (int k = -radiusX; k <= radiusX; k++)
+                {
+                    int idX = Clamp(x + k, 0, sourceImage.Width - 1);
+                    int idY = Clamp(y + l, 0, sourceImage.Height - 1);
+                    Color neighborColor = sourceImage.GetPixel(idX, idY);
+
+                    channelR[0] += neighborColor.R * kernel[k + radiusX, l + radiusY];
+                    channelG[0] += neighborColor.G * kernel[k + radiusX, l + radiusY];
+                    channelB[0] += neighborColor.B * kernel[k + radiusX, l + radiusY];
+
+                    channelR[1] += neighborColor.R * kernelY[k + radiusX, l + radiusY];
+                    channelG[1] += neighborColor.G * kernelY[k + radiusX, l + radiusY];
+                    channelB[1] += neighborColor.B * kernelY[k + radiusX, l + radiusY];
+                }
+            int resultR = Clamp((int)Math.Sqrt(channelR[0] * channelR[0] + channelR[1] * channelR[1]), 0, 255);
+            int resultG = Clamp((int)Math.Sqrt(channelG[0] * channelG[0] + channelG[1] * channelG[1]), 0, 255);
+            int resultB = Clamp((int)Math.Sqrt(channelB[0] * channelB[0] + channelB[1] * channelB[1]), 0, 255);
+
+            return Color.FromArgb(resultR, resultG, resultB);
         }
     }
 
@@ -434,8 +477,8 @@ namespace WindowsFormsApp1
         public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
         {
             Bitmap resultImage = new Bitmap(sourceImage.Width, sourceImage.Height);
-            //SetMask(3, 3, new int[,] { { 0, 1, 0 }, { 1, 1, 1 }, { 0, 1, 0 } });
-            SetMask(3, 3, mask);
+            SetMask(3, 3, new int[,] { { 0, 1, 0 }, { 1, 1, 1 }, { 0, 1, 0 } });
+            //SetMask(3, 3, mask);
 
             for (int i = MW / 2; i < sourceImage.Width - MW / 2; i++)
             {
@@ -452,11 +495,11 @@ namespace WindowsFormsApp1
     }
     class Dilation : Morfology
     {
-        public Dilation(int[,] Mask, int del = 1, int plus = 0)
+        public Dilation(int del = 1, int plus = 0)
         {
             this.del = del;
             this.plus = plus;
-            mask = Mask;
+           
         }
         protected override Color calculateNewPixelColor(Bitmap sourceImage, int x, int y)
         {
@@ -485,11 +528,11 @@ namespace WindowsFormsApp1
 
     class Erosion : Morfology
     {
-        public Erosion(int[,] Mask, int del = 1, int plus = 0)
+        public Erosion( int del = 1, int plus = 0)
         {
             this.del = del;
             this.plus = plus;
-            mask = Mask;
+          
         }
         protected override Color calculateNewPixelColor(Bitmap sourceImage, int x, int y)
         {
@@ -520,8 +563,8 @@ namespace WindowsFormsApp1
     {
         public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
         {
-            Filters filters1 = new Dilation(mask,2,50);
-            Filters filters2 = new Erosion(mask, 2);
+            Filters filters1 = new Dilation(2,50);
+            Filters filters2 = new Erosion( 2);
 
             return filters1.processImage(filters2.processImage(sourceImage, worker), worker);
         }
@@ -531,8 +574,8 @@ namespace WindowsFormsApp1
     {
         public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
         {
-            Filters filters1 = new Dilation(mask, 2);
-            Filters filters2 = new Erosion(mask, 2,50);
+            Filters filters1 = new Dilation( 2);
+            Filters filters2 = new Erosion(2,50);
 
             return filters2.processImage(filters1.processImage(sourceImage, worker), worker);
         }
@@ -543,8 +586,8 @@ namespace WindowsFormsApp1
         protected Bitmap dilImage, erImage;
         public override Bitmap processImage(Bitmap sourceImage, BackgroundWorker worker)
         {
-            Filters filterD = new Dilation(mask, 3);
-            Filters filterE = new Erosion(mask, 3,33);
+            Filters filterD = new Dilation( 3);
+            Filters filterE = new Erosion( 3,33);
             dilImage = filterD.processImage(sourceImage, worker);
             erImage = filterE.processImage(sourceImage, worker);
 

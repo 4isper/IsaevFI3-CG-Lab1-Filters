@@ -14,7 +14,7 @@ namespace WindowsFormsApp1
 {
     public partial class Form2 : Form
     {
-        public int[,] mask;
+        public float[,] mask;
         public Form2()
         {
             InitializeComponent();
@@ -23,10 +23,10 @@ namespace WindowsFormsApp1
 
         private void button1_Click(object sender, EventArgs e)
         {
-            mask = new int[3, 3]{
-                {int.Parse(textBox1.Text), int.Parse(textBox4.Text), int.Parse(textBox5.Text)},
-                {int.Parse(textBox2.Text), int.Parse(textBox6.Text), int.Parse(textBox9.Text)},
-                {int.Parse(textBox3.Text), int.Parse(textBox7.Text), int.Parse(textBox8.Text)}};
+            mask = new float[3, 3]{
+                {float.Parse(textBox1.Text), float.Parse(textBox4.Text), float.Parse(textBox5.Text)},
+                {float.Parse(textBox2.Text), float.Parse(textBox6.Text), float.Parse(textBox9.Text)},
+                {float.Parse(textBox3.Text), float.Parse(textBox7.Text), float.Parse(textBox8.Text)}};
             this.Close();
         }
     }

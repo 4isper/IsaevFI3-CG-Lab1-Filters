@@ -16,10 +16,10 @@ namespace WindowsFormsApp1
         Stack<Image> imageHistory = new Stack<Image>();
 
 
-        int[,] structElem = new int[3, 3]{
+        float[,] structElem = new float[3, 3]{
+                {0, 1, 0},
                 {1, 1, 1},
-                {1, 1, 1},
-                {1, 1, 1}};
+                {0, 1, 0}};
 
         public Form1()
         {
@@ -258,13 +258,13 @@ namespace WindowsFormsApp1
 
         private void сужениеToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Filters filters = new Erosion(structElem);
+            Filters filters = new Erosion();
             backgroundWorker1.RunWorkerAsync(filters);
         }
 
         private void расширениеToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Filters filters = new Dilation(structElem);
+            Filters filters = new Dilation();
             backgroundWorker1.RunWorkerAsync(filters);
         }
 
@@ -304,6 +304,12 @@ namespace WindowsFormsApp1
                 image = (Bitmap)pictureBox1.Image;
                 pictureBox1.Refresh();
             }
+        }
+
+        private void собеляNEWToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Filters filters = new SobelFilterNEW();
+            backgroundWorker1.RunWorkerAsync(filters);
         }
     }
 }
